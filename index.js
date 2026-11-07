@@ -139,7 +139,11 @@ export function apply(ctx) {
       void (async () => {
         box = await openSecretBox({ dataDir })
         auth = createAuthStore({ dataDir, box, logger })
-        const linked = await auth.load()
+        // Do not touch Baileys while the host is still settling a plugin install.
+        // With no stored device there is nothing to decrypt; `beginLink()` loads
+        // the auth state (and Baileys) only when the user actually links.
+        const hasStored = await auth.hasStoredCredentials()
+        const linked = hasStored ? await auth.load() : false
         if (disposed) {
           await auth.close()
           box.close()

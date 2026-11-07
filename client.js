@@ -4117,7 +4117,9 @@ window.__ModuleLoader__.load({
       SidebarEntry: SidebarEntry,
       namespace: NS,
     }
-    module.exports.default = App
+    // No default export: the DSH client loader treats a function default as the
+    // plugin entry point and would never call apply(), leaving the row "loading"
+    // with no sidebar entry. The plugin object is the module itself.
     return module.exports
   },
 })

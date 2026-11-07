@@ -39,7 +39,7 @@ disabled and explain why; the linked-device limits are shown in Settings.
 - DeepSeek Harness **0.2.0 or newer** (tested against 0.2.2-rc.1; the manifest
   declares `engines.dsh: ">=0.2.0"`).
 - A phone with WhatsApp, and a data connection for the computer.
-- Node.js 20+ (DSH's runtime is newer).
+- Node.js 22.5+ (DSH 0.2.2's runtime is newer).
 - A QR scan from the phone, once per link.
 
 ## Install
@@ -49,20 +49,25 @@ disabled and explain why; the linked-device limits are shown in Settings.
 ```sh
 cd dsh-whatsapp
 npm install
-npm pack                       # produces dsh-whatsapp-0.1.0.tgz
-dsh plugin add "$PWD/dsh-whatsapp-0.1.0.tgz"
+npm pack                       # produces dsh-whatsapp-0.1.1.tgz
+dsh plugin add "$PWD/dsh-whatsapp-0.1.1.tgz"
 ```
 
 Restart DSH if the plugin manager says a restart is required. The **WhatsApp** row
 appears in the left sidebar; open it to start linking.
 
+If you installed while DSH was already running and the row is not there, restart
+DSH once. The running host caches a failed module import from an earlier copy;
+a fresh process loads the fixed bundle. On a normal install, no hot-reload
+failure occurs.
+
 ### From the GitHub release
 
-Download `dsh-whatsapp-0.1.0.tgz` from the
+Download `dsh-whatsapp-0.1.1.tgz` from the
 [latest release](https://github.com/AJN-Tech/dsh-whatsapp/releases/latest) and:
 
 ```sh
-dsh plugin add /path/to/dsh-whatsapp-0.1.0.tgz
+dsh plugin add /path/to/dsh-whatsapp-0.1.1.tgz
 ```
 
 ### From a source checkout (development)

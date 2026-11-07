@@ -2,6 +2,10 @@
 
 ## The WhatsApp entry is not in the left sidebar
 
+0. **Restart DSH once after install.** A plugin installed into an already-running
+   host can have its client entry cached as failed; a fresh process reads the
+   current bundle and shows the row. This is the usual fix after the first
+   install or after replacing the package.
 1. Confirm the package is installed in the active profile:
    `dsh plugin list` or DSH → Plugins. The package name is `dsh-whatsapp`.
 2. Confirm the profile's `package.json` `dsh.profile.bundles` contains

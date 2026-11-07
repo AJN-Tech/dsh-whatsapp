@@ -301,6 +301,12 @@ test('the bundle exports apply + inject and apply never throws on an empty conte
   assert.equal(typeof exported.apply, 'function')
   assert.ok(Array.isArray(exported.inject), 'exports.inject must be an array')
   assert.ok(exported.inject.includes('slots'))
+  // The DSH client loader treats a function default export as the plugin entry
+  // point. A default here meant apply() was never called and the sidebar row
+  // sat at "loading" forever.
+  assert.equal(Object.prototype.hasOwnProperty.call(exported, 'default'), false,
+    'client.js must not export a default; the loader would use it instead of apply()')
+  assert.equal(exported.name, 'dsh-whatsapp')
 
   for (const context of [{}, null, undefined, { logger: { warn() {} } }, {
     inject() { throw new Error('service missing') },
