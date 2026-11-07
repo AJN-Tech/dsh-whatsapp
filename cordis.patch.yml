@@ -1,0 +1,6 @@
+# Installed into the active DSH profile. The id is both the loader entry id and the
+# locale/config namespace used by the client bundle.
+- insert:
+    - id: dsh-whatsapp
+      name: dsh-whatsapp
+      config: {}

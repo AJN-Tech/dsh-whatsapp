@@ -1,0 +1,70 @@
+{
+  "name": "dsh-whatsapp",
+  "version": "0.1.0",
+  "description": "WhatsApp Web-style linked-device client for DeepSeek Harness: a left-sidebar entry that mirrors a personal WhatsApp account over the multi-device protocol, with QR linking, realtime sync, file sharing and encrypted local session storage.",
+  "license": "MIT",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib/",
+    "cordis.patch.yml",
+    "README.md",
+    "docs/",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.0.0",
+    "dsh": ">=0.2.0"
+  },
+  "keywords": [
+    "deepseek",
+    "harness",
+    "dsh",
+    "dsh-plugin",
+    "whatsapp",
+    "whatsapp-web",
+    "baileys",
+    "linked-device"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/example/dsh-whatsapp.git"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check index.js && node --check client.js && find lib -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "pack:check": "npm pack --dry-run"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "dsh-plugin-toolkit": "^0.20.12",
+    "jsdom": "^26.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  }
+}

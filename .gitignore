@@ -1,0 +1,8 @@
+node_modules/
+.test-tmp/
+*.tgz
+npm-debug.log*
+.DS_Store
+CONTRACT.md
+.npm-cache-tmp/
+.pack-test/
