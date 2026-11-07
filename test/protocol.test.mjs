@@ -436,6 +436,11 @@ test('media metadata defaults are applied per kind', () => {
   assert.equal(mediaMetadata({ conversation: 'x' }), null)
   assert.equal(mediaMetadata(null), null)
   assert.equal(mediaMetadata({ imageMessage: { jpegThumbnail: Buffer.alloc(0) } }).hasThumbnail, true)
+  // Media that WhatsApp no longer serves (or a placeholder with only a hash)
+  // must be marked non-downloadable so the UI does not request a 404 forever.
+  assert.equal(mediaMetadata({ imageMessage: { directPath: '/v/a' } }).downloadable, true)
+  assert.equal(mediaMetadata({ imageMessage: { url: 'https://mmg.whatsapp.net/a' } }).downloadable, true)
+  assert.equal(mediaMetadata({ videoMessage: { fileSha256: Buffer.from([1]) } }).downloadable, false)
 })
 
 test('oversized thumbnails are dropped instead of inflated', () => {

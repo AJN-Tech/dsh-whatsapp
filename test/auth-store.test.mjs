@@ -185,7 +185,7 @@ test('flush() persists pending keys synchronously enough to reload', async (t) =
   assert.deepEqual(got.k, { value: 'v' })
 })
 
-test('unregistered half-pairing credentials are discarded on load', async (t) => {
+test('unregistered half-pairing credentials are not linked, and are preserved for a retry', async (t) => {
   const dir = await makeTempDir(t)
   // Write an unregistered creds.enc (registered stays false).
   const box1 = await openSecretBox({ dataDir: dir })
@@ -199,7 +199,9 @@ test('unregistered half-pairing credentials are discarded on load', async (t) =>
   await auth1.saveCreds()
   assert.equal(await exists(path.join(dir, 'creds.enc')), true)
 
-  // A fresh instance must treat that as "not linked" and remove the files.
+  // A fresh instance must treat that as "not linked" but never delete a
+  // credential file from a load: a plugin reload can race a write, and an
+  // explicit Log out / Re-link is the only destructive path.
   const box2 = await openSecretBox({ dataDir: dir })
   const auth2 = new AuthStore({ dataDir: dir, box: box2, logger: silentLogger })
   t.after(async () => {
@@ -208,11 +210,11 @@ test('unregistered half-pairing credentials are discarded on load', async (t) =>
   })
   assert.equal(await auth2.load(), false)
   assert.equal(auth2.state.creds.registered, false)
-  assert.equal(await exists(path.join(dir, 'creds.enc')), false)
-  assert.equal(await exists(path.join(dir, 'keys.enc')), false)
+  assert.equal(await exists(path.join(dir, 'creds.enc')), true)
+  assert.equal(await exists(path.join(dir, 'keys.enc')), false) 
 })
 
-test('unreadable stored credentials fall back to an unlinked device', async (t) => {
+test('unreadable stored credentials fall back to unlinked without deleting the file', async (t) => {
   const dir = await makeTempDir(t)
   const box = await openSecretBox({ dataDir: dir })
   t.after(() => box.close())
@@ -224,8 +226,8 @@ test('unreadable stored credentials fall back to an unlinked device', async (t) 
   })
   assert.equal(await auth.load(), false)
   assert.equal(auth.state.creds.registered, false)
-  // Corrupt state is cleaned up rather than retried forever.
-  assert.equal(await exists(path.join(dir, 'creds.enc')), false)
+  // The corrupt file is left in place; an explicit re-link overwrites it.
+  assert.equal(await exists(path.join(dir, 'creds.enc')), true)
 })
 
 test('wipe() deletes sealed files and resets the in-memory state', async (t) => {

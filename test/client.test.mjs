@@ -27,7 +27,7 @@ function baseState(overrides = {}) {
     linked: true,
     connection: 'online',
     qr: null,
-    me: { id: JID, name: 'Me', phone: '15551234567' },
+    me: { id: '15550000000@s.whatsapp.net', name: 'Me', phone: '15550000000' },
     linkedAt: 1_700_000_000_000,
     lastConnectedAt: 1_700_000_001_000,
     reconnectInMs: null,
@@ -189,6 +189,15 @@ async function waitFor(app, selector, predicate = () => true, timeoutMs = 1500) 
     await settle(app)
   }
   throw new Error(`timed out waiting for ${selector}\n${app.html().slice(-1500)}`)
+}
+
+async function waitForGone(app, selector, timeoutMs = 1500) {
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    if (app.query(selector) === null) return
+    await settle(app)
+  }
+  throw new Error(`timed out waiting for ${selector} to disappear\n${app.html().slice(-1500)}`)
 }
 
 async function mountApp(t, {
@@ -425,6 +434,17 @@ test('the composer sends POST /send on click and on Enter', async (t) => {
   assert.deepEqual(JSON.parse(sends[1].body), { chat: JID, text: 'enter hello' })
   // Cleaning up the composer after send means the input is empty again.
   assert.equal(app.must('[data-testid="composer-input"]').value, '')
+})
+
+test('contact info opens from the thread and shows name and phone', async (t) => {
+  const app = await mountApp(t, { state: baseState(), chats: [chatSummary()] })
+  await openFirstChat(app)
+  await app.click('[data-testid="contact-info-button"]')
+  await waitFor(app, '[data-testid="contact-sheet"]')
+  assert.match(app.must('[data-testid="contact-name"]').textContent, /Bob/)
+  assert.match(app.text(), /\+15551234567/)
+  await app.click('[data-testid="contact-close"]')
+  await waitForGone(app, '[data-testid="contact-sheet"]')
 })
 
 test('settings opens from the rail and closes again', async (t) => {

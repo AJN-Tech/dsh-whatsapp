@@ -1,6 +1,6 @@
 {
   "name": "dsh-whatsapp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "WhatsApp Web-style linked-device client for DeepSeek Harness: a left-sidebar entry that mirrors a personal WhatsApp account over the multi-device protocol, with QR linking, realtime sync, file sharing and encrypted local session storage.",
   "license": "MIT",
   "type": "module",

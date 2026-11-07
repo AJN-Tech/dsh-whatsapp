@@ -49,8 +49,8 @@ disabled and explain why; the linked-device limits are shown in Settings.
 ```sh
 cd dsh-whatsapp
 npm install
-npm pack                       # produces dsh-whatsapp-0.1.1.tgz
-dsh plugin add "$PWD/dsh-whatsapp-0.1.1.tgz"
+npm pack                       # produces dsh-whatsapp-0.1.2.tgz
+dsh plugin add "$PWD/dsh-whatsapp-0.1.2.tgz"
 ```
 
 Restart DSH if the plugin manager says a restart is required. The **WhatsApp** row
@@ -63,11 +63,11 @@ failure occurs.
 
 ### From the GitHub release
 
-Download `dsh-whatsapp-0.1.1.tgz` from the
+Download `dsh-whatsapp-0.1.2.tgz` from the
 [latest release](https://github.com/AJN-Tech/dsh-whatsapp/releases/latest) and:
 
 ```sh
-dsh plugin add /path/to/dsh-whatsapp-0.1.1.tgz
+dsh plugin add /path/to/dsh-whatsapp-0.1.2.tgz
 ```
 
 ### From a source checkout (development)

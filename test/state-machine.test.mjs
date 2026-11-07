@@ -509,7 +509,7 @@ test('sending is rejected while offline and accepted when online', async (t) => 
   await flush()
   const result = await harness.client.sendText(JID, 'hi')
   assert.equal(result.key.id, 'sent-1')
-  assert.deepEqual(sock.sent[0], { jid: JID, content: { text: 'hi' }, options: {} })
+  assert.deepEqual(sock.sent[0], { jid: JID, content: { text: 'hi', linkPreview: null }, options: {} })
 
   // Quoted send passes Baileys the quoted WAMessage.
   await harness.client.sendText(JID, 'reply', { key: { id: 'orig' } })

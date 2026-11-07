@@ -546,3 +546,34 @@ test('deleteChats removes the chat and its messages', async (t) => {
   assert.equal(store.hasMessage(JID2, 'd-2'), true)
   assert.equal(store.deleteChats([JID]).changed, false)
 })
+
+
+test('E2E notice stubs never become the chat-list preview', (t) => {
+  const store = memoryStore(t)
+  store.ingestChats([{ id: JID, timestamp: 1 }])
+  store.upsertMessage(message({
+    id: 'notice-1',
+    kind: 'system',
+    text: 'Messages are end-to-end encrypted',
+    timestamp: 5000,
+  }))
+  assert.equal(store.getChat(JID).lastMessage, null)
+  store.upsertMessage(message({ id: 'real-1', text: 'actual message', timestamp: 6000 }))
+  store.upsertMessage(message({
+    id: 'notice-2',
+    kind: 'system',
+    text: 'Messages are end-to-end encrypted',
+    timestamp: 7000,
+  }))
+  assert.equal(store.getChat(JID).lastMessage.text, 'actual message')
+})
+
+test('a learned LID->phone pair resolves the contact name under both ids', (t) => {
+  const store = memoryStore(t)
+  const LID = '999999999999999@lid'
+  store.ingestContacts([{ id: JID, name: 'Bob' }])
+  store.ingestChats([{ id: LID, name: LID, timestamp: 1000 }])
+  assert.equal(store.recordLidPhone(LID, JID), true)
+  assert.equal(store.resolveName(LID), 'Bob')
+  assert.equal(store.resolvePhone(LID), JID.split('@')[0])
+})

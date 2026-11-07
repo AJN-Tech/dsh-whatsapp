@@ -34,6 +34,11 @@ browser. This is the closest legitimate technical match for the requirement:
   (subject to WhatsApp's linked-device rules, ~14 days since last use; up to four
   linked devices).
 - It does not weaken E2E encryption; it implements the protocol.
+- The identity and media details follow the same Baileys patterns used by the
+  working [OpenWA](https://github.com/rmyndharis/OpenWA) gateway: LID↔phone
+  aliases for contacts/chats, raw media descriptors for re-download, media
+  placeholders that WhatsApp no longer serves, and `linkPreview: null` on text
+  sends so a URL cannot block the send on a slow page fetch.
 
 ### Alternatives considered
 

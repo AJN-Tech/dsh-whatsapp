@@ -25,7 +25,7 @@ window.__ModuleLoader__.load({
     const SLOT_SIDEBAR = 'sidebar.panellist'
     const SLOT_MAIN = 'main'
     const PANEL_ID = 'dsh-whatsapp'
-    const VERSION = '0.1.0'
+    const VERSION = '0.1.2'
     const BUNDLE_ID = 'dsh-whatsapp.client'
     const FETCH_TIMEOUT_MS = 20000
     const POLL_INTERVAL_MS = 5000
@@ -122,6 +122,9 @@ window.__ModuleLoader__.load({
       'rail.muted': 'Muted',
       'rail.group': 'Group',
       'rail.lastFromYou': 'You: {text}',
+      'chat.unknownContact': 'Unknown contact',
+      'chat.unknownGroup': 'Group',
+      'chat.messageYourself': 'Message yourself',
       'rail.refresh': 'Refresh chat list',
 
       'chat.selectTitle': 'WhatsApp',
@@ -138,6 +141,7 @@ window.__ModuleLoader__.load({
       'thread.voiceCall': 'Voice call — unavailable',
       'thread.videoCall': 'Video call — unavailable',
       'thread.callsInfo': 'Why are calls unavailable?',
+      'thread.contactInfo': 'Contact info',
       'thread.callsNote': 'Linked-device clients cannot carry call audio or video. You will still get a banner when someone calls, so you can reject the call, but answering or starting a call is not possible in this client.',
       'thread.loadOlder': 'Load older messages',
       'thread.loadingOlder': 'Loading older messages…',
@@ -183,6 +187,8 @@ window.__ModuleLoader__.load({
       'msg.call': 'Call',
       'msg.system': 'System message',
       'msg.unknown': 'Unsupported message',
+      'msg.mediaUnavailable': 'Media unavailable',
+      'msg.mediaUnavailableHint': 'WhatsApp no longer serves this attachment to linked devices.',
       'msg.photoAlt': 'Image attachment',
       'msg.videoAlt': 'Video attachment',
       'msg.openImage': 'Open image',
@@ -207,6 +213,18 @@ window.__ModuleLoader__.load({
       'call.rejected': 'Call rejected.',
       'call.rejectError': 'Could not reject the call: {message}',
       'call.unknownCaller': 'Unknown caller',
+
+      'contact.title': 'Contact info',
+      'contact.name': 'Name',
+      'contact.phone': 'Phone',
+      'contact.phoneUnknown': 'Not shared with linked devices',
+      'contact.whatsappId': 'WhatsApp ID',
+      'contact.kind': 'Type',
+      'contact.kindGroup': 'Group',
+      'contact.kindDirect': 'Contact',
+      'contact.profilePhoto': 'Profile photo',
+      'contact.close': 'Close contact info',
+      'contact.openChat': 'Open chat',
 
       'settings.title': 'Settings',
       'settings.close': 'Close settings',
@@ -407,6 +425,12 @@ window.__ModuleLoader__.load({
       return local.startsWith('+') ? local : '+' + local
     }
 
+    function phoneFromWaJid(jid) {
+      const value = str(jid)
+      if (!/^\d+@s\.whatsapp\.net$/.test(value)) return ''
+      return value.slice(0, value.indexOf('@'))
+    }
+
     function truncate(text, max) {
       const value = str(text)
       if (value.length <= max) return value
@@ -577,6 +601,7 @@ window.__ModuleLoader__.load({
         ptt: raw.ptt === true,
         animated: raw.animated === true,
         hasThumbnail: raw.hasThumbnail === true,
+        downloadable: raw.downloadable !== false,
       }
     }
 
@@ -714,6 +739,7 @@ window.__ModuleLoader__.load({
           id: str(source.me.id),
           name: str(source.me.name) || str(source.me.phone) || str(source.me.id) || 'You',
           phone: str(source.me.phone),
+          lid: str(source.me.lid),
         }
       }
       let lastError = null
@@ -1123,6 +1149,14 @@ window.__ModuleLoader__.load({
   display: inline-flex; align-items: center; justify-content: center; width: 54px; height: 54px;
   border-radius: 50%; background: rgba(0, 0, 0, 0.5);
 }
+.dshwa-media-unavailable {
+  display: flex; align-items: center; gap: 10px; max-width: 300px;
+  padding: 10px 12px; border-radius: var(--wa-radius); background: var(--wa-panel-2);
+  color: var(--wa-text-2); font-size: 12.5px; line-height: 1.35;
+}
+.dshwa-media-unavailable-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dshwa-media-unavailable-text strong { color: var(--wa-text); font-size: 13px; }
+
 .dshwa-filecard {
   display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 7px;
   background: rgba(0, 0, 0, 0.05); margin-bottom: 4px; text-decoration: none; color: inherit;
@@ -1277,6 +1311,12 @@ window.__ModuleLoader__.load({
 }
 .dshwa-sheet-head h2 { flex: 1 1 auto; margin: 0; font-size: 16.5px; font-weight: 600; }
 .dshwa-sheet-body { flex: 1 1 auto; overflow-y: auto; padding: 6px 18px 30px; overscroll-behavior: contain; }
+.dshwa-contact-hero {
+  display: flex; align-items: center; gap: 16px; padding: 22px 18px 10px;
+}
+.dshwa-contact-hero-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.dshwa-contact-hero-text strong { font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+
 .dshwa-section { margin-top: 18px; }
 .dshwa-section h3 {
   font-size: 12px; font-weight: 700; color: var(--wa-text-2); text-transform: uppercase;
@@ -1459,17 +1499,75 @@ window.__ModuleLoader__.load({
       })
     }
 
+    const avatarUrls = new Map()
+    const avatarPromises = new Map()
+    function loadAvatarUrl(jid) {
+      if (typeof jid !== 'string' || jid === '') return Promise.resolve(null)
+      if (avatarUrls.has(jid)) return Promise.resolve(avatarUrls.get(jid) || null)
+      if (avatarPromises.has(jid)) return avatarPromises.get(jid)
+      const promise = (async () => {
+        try {
+          const response = await fetch(apiUrl('/avatar', { jid }), { credentials: 'same-origin', cache: 'no-store' })
+          if (!response || response.ok !== true) { avatarUrls.set(jid, null); return null }
+          const blob = await response.blob()
+          if (!blob || blob.size === 0) { avatarUrls.set(jid, null); return null }
+          const url = URL.createObjectURL(blob)
+          avatarUrls.set(jid, url)
+          return url
+        } catch (error) {
+          avatarUrls.set(jid, null)
+          return null
+        } finally {
+          avatarPromises.delete(jid)
+        }
+      })()
+      avatarPromises.set(jid, promise)
+      return promise
+    }
+
     function Avatar(props) {
       const name = props && props.name ? props.name : ''
       const size = props && props.size ? props.size : undefined
       const isGroup = props && props.isGroup === true
       const seed = props && props.seed ? props.seed : name
+      const jid = props && props.jid ? props.jid : ''
+      const [src, setSrc] = React.useState(() => (jid !== '' ? (avatarUrls.get(jid) || null) : null))
+      React.useEffect(() => {
+        if (jid === '') return undefined
+        let alive = true
+        const cached = avatarUrls.get(jid)
+        if (cached) { setSrc(cached); return undefined }
+        loadAvatarUrl(jid).then((url) => { if (alive) setSrc(url) })
+        return () => { alive = false }
+      }, [jid])
       return h('span', {
         className: 'dshwa-avatar',
         'data-size': size,
         style: { background: avatarColor(seed) },
         'aria-hidden': 'true',
-      }, isGroup ? h(Icon, { name: 'group', size: 22 }) : initials(name))
+      }, src
+        ? h('img', { src: src, alt: '', loading: 'lazy', draggable: false })
+        : (isGroup ? h(Icon, { name: 'group', size: 22 }) : initials(name)))
+    }
+
+    function selfChatId(me) {
+      return me && me.id ? me.id : ''
+    }
+    function selfLid(me) {
+      return me && me.lid ? me.lid : ''
+    }
+    function isSelfChat(chat, me) {
+      if (!chat || !me) return false
+      return chat.id === selfChatId(me) || (selfLid(me) !== '' && chat.id === selfLid(me))
+    }
+    function chatDisplayName(chat, me, t) {
+      if (!chat) return ''
+      const tr = typeof t === 'function' ? t : tx
+      if (isSelfChat(chat, me)) return tr('chat.messageYourself')
+      const name = str(chat.name)
+      if (name !== '' && name !== chat.id && !/^\+\d+$/.test(name)) return name
+      if (/^\+\d{7,}$/.test(name)) return name
+      return chat.isGroup ? tr('chat.unknownGroup') : tr('chat.unknownContact')
     }
 
     function IconButton(props) {
@@ -1824,7 +1922,8 @@ window.__ModuleLoader__.load({
       const preview = lastMessagePreview(chat)
       const timeText = formatListTime(chat.timestamp)
       const typing = props.typing === true
-      const labelParts = [chat.name]
+      const displayName = chatDisplayName(chat, props.me)
+      const labelParts = [displayName]
       if (chat.isGroup) labelParts.push(tx('rail.group'))
       if (unread) labelParts.push(tx('rail.unread', { count: chat.unread }))
       if (chat.muted) labelParts.push(tx('rail.muted'))
@@ -1843,10 +1942,10 @@ window.__ModuleLoader__.load({
         'aria-current': props.active ? 'true' : undefined,
         onClick: () => props.onSelect(chat),
       },
-      h(Avatar, { name: chat.name, isGroup: chat.isGroup, seed: chat.id }),
+      h(Avatar, { jid: isSelfChat(chat, props.me) ? selfChatId(props.me) : chat.id, name: displayName, isGroup: chat.isGroup, seed: chat.id }),
       h('div', { className: 'dshwa-chatrow-body' },
         h('div', { className: 'dshwa-chatrow-top' },
-          h('span', { className: 'dshwa-chatrow-name' }, chat.name),
+          h('span', { className: 'dshwa-chatrow-name' }, displayName),
           h('span', { className: 'dshwa-chatrow-time' }, timeText),
         ),
         h('div', { className: 'dshwa-chatrow-bottom' },
@@ -1891,7 +1990,7 @@ window.__ModuleLoader__.load({
       const polling = props.polling === true
       return h('div', { className: 'dshwa-rail', 'data-testid': 'chat-rail' },
         h('div', { className: 'dshwa-rail-head' },
-          h(Avatar, { name: me && me.name ? me.name : 'You', size: 'sm', seed: me && me.id ? me.id : 'me' }),
+          h(Avatar, { jid: me && me.id ? me.id : '', name: me && me.name ? me.name : 'You', size: 'sm', seed: me && me.id ? me.id : 'me' }),
           h('div', { className: 'dshwa-rail-me' },
             h('span', { className: 'dshwa-name' }, me && me.name ? me.name : 'WhatsApp'),
             h('div', { className: 'dshwa-rail-status-row' },
@@ -1941,6 +2040,7 @@ window.__ModuleLoader__.load({
           : props.chats.map((chat) => h(ChatRowView, {
             key: chat.id,
             chat: chat,
+            me: props.me,
             active: chat.id === props.activeChatId,
             typing: props.typingChatIds ? props.typingChatIds[chat.id] === true : false,
             lastStatus: props.lastStatusByChat ? props.lastStatusByChat[chat.id] : undefined,
@@ -1979,9 +2079,9 @@ window.__ModuleLoader__.load({
             h('span', { className: 'dshwa-back' },
               h(IconButton, { label: tx('thread.back'), size: 'sm', testid: 'back-button', onClick: props.onBack }, h(Icon, { name: 'back', size: 21 })),
             ),
-            h(Avatar, { name: chat.name, isGroup: chat.isGroup, seed: chat.id, size: 'sm' }),
+            h(Avatar, { jid: isSelfChat(chat, props.state && props.state.me) ? selfChatId(props.state.me) : chat.id, name: chatDisplayName(chat, props.state && props.state.me), isGroup: chat.isGroup, seed: chat.id, size: 'sm' }),
             h('div', { className: 'dshwa-thread-head-main' },
-              h('span', { className: 'dshwa-thread-title', 'data-testid': 'thread-title' }, chat.name),
+              h('span', { className: 'dshwa-thread-title', 'data-testid': 'thread-title' }, chatDisplayName(chat, state && state.me)),
               h('span', {
                 className: 'dshwa-thread-sub',
                 'data-typing': typing ? 'true' : 'false',
@@ -2005,6 +2105,7 @@ window.__ModuleLoader__.load({
                   onClick: props.onCallsUnavailable,
                 }, h(Icon, { name: 'video', size: 20 })),
               ),
+              h(IconButton, { label: tx('thread.contactInfo'), size: 'sm', testid: 'contact-info-button', onClick: () => props.onOpenContact(chat) }, h(Icon, { name: 'contact', size: 19 })),
               h(IconButton, { label: tx('thread.callsInfo'), size: 'sm', testid: 'calls-info', onClick: props.onCallsUnavailable }, h(Icon, { name: 'info', size: 18 })),
               h(IconButton, { label: tx('common.settings'), size: 'sm', onClick: props.onSettings }, h(Icon, { name: 'settings', size: 18 })),
             ),
@@ -2089,7 +2190,21 @@ window.__ModuleLoader__.load({
       const kind = message.kind
       const fileName = media && media.fileName ? media.fileName : ''
       const url = mediaUrl(message.chatId, message.id)
+      const downloadable = !media || media.downloadable !== false
+      const unavailable = () => h('div', {
+        className: 'dshwa-media-unavailable',
+        'data-testid': 'media-unavailable',
+        role: 'note',
+      },
+      h(Icon, { name: kind === 'audio' ? 'mic' : (kind === 'document' ? 'file' : 'image'), size: 22 }),
+      h('span', { className: 'dshwa-media-unavailable-text' },
+        h('strong', null, tx('msg.mediaUnavailable')),
+        h('span', null, tx('msg.mediaUnavailableHint')),
+      ),
+      )
+      if (!downloadable && !message.thumbnail && kind !== 'document') return unavailable()
       if (kind === 'sticker') {
+        if (!downloadable && !message.thumbnail) return unavailable()
         const stickerSrc = message.thumbnail || url
         return h('div', { className: 'dshwa-media', 'data-kind': 'sticker' },
           h('img', {
@@ -2121,6 +2236,7 @@ window.__ModuleLoader__.load({
         )
       }
       if (kind === 'video') {
+        if (!downloadable) return unavailable()
         const poster = message.thumbnail || undefined
         return h('div', { className: 'dshwa-media', 'data-kind': 'video' },
           h('video', { src: url, poster: poster, controls: true, preload: 'metadata' }),
@@ -2133,6 +2249,7 @@ window.__ModuleLoader__.load({
         )
       }
       if (kind === 'audio') {
+        if (!downloadable) return unavailable()
         const duration = media && media.seconds ? formatDuration(media.seconds) : ''
         return h('div', { className: 'dshwa-audio' },
           h(Icon, { name: 'mic', size: 20 }),
@@ -2142,6 +2259,7 @@ window.__ModuleLoader__.load({
       }
       if (kind === 'document') {
         const sizeText = media && media.fileLength ? formatBytes(media.fileLength) : ''
+        if (!downloadable) return unavailable()
         return h('a', {
           className: 'dshwa-filecard',
           href: url,
@@ -2825,6 +2943,58 @@ window.__ModuleLoader__.load({
       )
     }
 
+    // ── contact info ──────────────────────────────────────────────────────
+    function ContactSheet(props) {
+      const chat = props.chat
+      const me = props.me || null
+      if (!chat) return null
+      useEscapeKey(true, props.onClose)
+      const name = chatDisplayName(chat, me)
+      const phone = phoneFromWaJid(chat.id)
+      const self = isSelfChat(chat, me)
+      return h('div', {
+        className: 'dshwa-scrim',
+        onMouseDown: (event) => { if (event.target === event.currentTarget) props.onClose() },
+      },
+      h('div', {
+        className: 'dshwa-sheet',
+        role: 'dialog',
+        'aria-modal': 'true',
+        'aria-label': tx('contact.title'),
+        'data-testid': 'contact-sheet',
+      },
+      h('div', { className: 'dshwa-sheet-head' },
+        h(Icon, { name: 'contact', size: 20 }),
+        h('h2', null, tx('contact.title')),
+        h(IconButton, { label: tx('contact.close'), testid: 'contact-close', onClick: props.onClose }, h(Icon, { name: 'close', size: 20 })),
+      ),
+      h('div', { className: 'dshwa-sheet-body' },
+        h('div', { className: 'dshwa-contact-hero' },
+          h(Avatar, {
+            jid: self && me ? (me.id || me.lid) : chat.id,
+            name: name,
+            isGroup: chat.isGroup,
+            seed: chat.id,
+            size: 'lg',
+          }),
+          h('div', { className: 'dshwa-contact-hero-text' },
+            h('strong', { 'data-testid': 'contact-name' }, name),
+            h('span', { className: 'dshwa-sub' }, chat.isGroup ? tx('contact.kindGroup') : (self ? tx('chat.messageYourself') : tx('contact.kindDirect'))),
+          ),
+        ),
+        h('div', { className: 'dshwa-section' },
+          h('h3', null, tx('contact.name')),
+          h('div', { className: 'dshwa-panelbox' },
+            h(Kv, { label: tx('contact.phone'), value: phone !== '' ? '+' + phone : (self && me && me.phone ? me.phone : tx('contact.phoneUnknown')) }),
+            h(Kv, { label: tx('contact.whatsappId'), value: chat.id }),
+            h(Kv, { label: tx('contact.kind'), value: chat.isGroup ? tx('contact.kindGroup') : (self ? tx('chat.messageYourself') : tx('contact.kindDirect')) }),
+          ),
+        ),
+        h('p', { className: 'dshwa-note' }, tx('settings.callsDetail')),
+      ),
+      ))
+    }
+
     // ── image / video lightbox ────────────────────────────────────────────
     function Lightbox(props) {
       const item = props.item
@@ -2961,6 +3131,7 @@ window.__ModuleLoader__.load({
       const [incomingCall, setIncomingCall] = React.useState(null)
       const callRef = React.useRef(null)
       const [settingsOpen, setSettingsOpen] = React.useState(false)
+      const [contactChat, setContactChat] = React.useState(null)
       const [lightbox, setLightbox] = React.useState(null)
       const [toast, setToast] = React.useState(null)
       const toastTimerRef = React.useRef(null)
@@ -3341,7 +3512,7 @@ window.__ModuleLoader__.load({
         try {
           const payload = { chat: chatId, text: body }
           if (quotedId) payload.quoted = quotedId
-          const raw = await apiFetch('/send', { method: 'POST', body: payload })
+          const raw = await apiFetch('/send', { method: 'POST', body: payload, timeoutMs: 60000 })
           const rawMessage = raw && typeof raw === 'object' && raw.message ? raw.message : raw
           const saved = normalizeMessage(Object.assign({}, rawMessage || {}, {
             id: (rawMessage && rawMessage.id) || localId,
@@ -3811,6 +3982,8 @@ window.__ModuleLoader__.load({
 
       const openSettings = React.useCallback(() => { setSettingsOpen(true) }, [])
       const closeSettings = React.useCallback(() => { setSettingsOpen(false) }, [])
+      const openContact = React.useCallback((chat) => { setContactChat(chat || null) }, [])
+      const closeContact = React.useCallback(() => { setContactChat(null) }, [])
       const dismissToast = React.useCallback(() => { setToast(null) }, [])
 
       const onReply = React.useCallback((message) => { setReplyTo(message) }, [])
@@ -3869,6 +4042,7 @@ window.__ModuleLoader__.load({
             onCallsUnavailable: callsUnavailable,
             onLoadOlder: () => loadOlderMessages(activeChat.id),
             onRetryMessages: retryActiveMessages,
+            onOpenContact: openContact,
             onReply: onReply,
             onCancelReply: cancelReply,
             onCopy: copyMessage,
@@ -3937,6 +4111,14 @@ window.__ModuleLoader__.load({
           onLogout: (wipe) => { void logoutDevice(wipe) },
           onRelink: relinkDevice,
           onReconnect: reconnectNow,
+        }))
+      }
+      if (contactChat !== null) {
+        children.push(h(ContactSheet, {
+          key: 'contact',
+          chat: contactChat,
+          me: state ? state.me : null,
+          onClose: closeContact,
         }))
       }
       if (lightbox !== null) {
