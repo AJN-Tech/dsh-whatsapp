@@ -35,7 +35,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/example/dsh-whatsapp.git"
+    "url": "git+https://github.com/AJN-Tech/dsh-whatsapp.git"
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",
@@ -66,5 +66,9 @@
         "@deepseek-ai/dsh-client-ui-sidebar"
       ]
     }
+  },
+  "homepage": "https://github.com/AJN-Tech/dsh-whatsapp#readme",
+  "bugs": {
+    "url": "https://github.com/AJN-Tech/dsh-whatsapp/issues"
   }
 }

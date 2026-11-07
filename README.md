@@ -56,9 +56,19 @@ dsh plugin add "$PWD/dsh-whatsapp-0.1.0.tgz"
 Restart DSH if the plugin manager says a restart is required. The **WhatsApp** row
 appears in the left sidebar; open it to start linking.
 
+### From the GitHub release
+
+Download `dsh-whatsapp-0.1.0.tgz` from the
+[latest release](https://github.com/AJN-Tech/dsh-whatsapp/releases/latest) and:
+
+```sh
+dsh plugin add /path/to/dsh-whatsapp-0.1.0.tgz
+```
+
 ### From a source checkout (development)
 
 ```sh
+git clone https://github.com/AJN-Tech/dsh-whatsapp.git
 cd dsh-whatsapp
 npm install
 dsh plugin add "$PWD"
